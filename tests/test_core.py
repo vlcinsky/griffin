@@ -3,24 +3,20 @@
 
 from __future__ import absolute_import, division, print_function
 
-import os
-
 import pytest
 from ramlfications import parameters, raml
 from six import iterkeys
 
 from griffin.core import create_context
 
-from .base import EXAMPLES
-
 
 @pytest.fixture(scope="session")
-def ramlfile():
-    return os.path.join(EXAMPLES, "spotify.raml")
+def ramlfile(EXAMPLES):
+    return EXAMPLES / "spotify.raml"
 
 
 def test_create_context(ramlfile):
-    context = create_context(ramlfile)
+    context = create_context(ramlfile.strpath)
     meta = context.metadata
     collections = context.groupings
 

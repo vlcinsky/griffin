@@ -3,36 +3,49 @@
 
 from __future__ import absolute_import, division, print_function
 
-import os
-
-from click.testing import CliRunner
 import pytest
-
-from griffin import __main__ as main
-
-from .base import CONFIG, EXAMPLES
+import py
 
 
 @pytest.fixture()
-def runner():
-    return CliRunner()
+def raml_file(EXAMPLES):
+    """RAML file"""
+    return EXAMPLES / "spotify.raml"
 
 
-def check_result(exp_code, exp_msg, result):
-    assert result.exit_code == exp_code
-    if exp_msg:
-        assert result.output == exp_msg
+@pytest.fixture()
+def config_file(CONFIG):
+    """Griffin config file"""
+    return CONFIG / "simple_config.yaml"
 
 
-def test_build(runner, tmpdir):
-    raml_file = os.path.join(EXAMPLES, "spotify.raml")
-    config_file = os.path.join(CONFIG, "simple_config.yaml")
-    output_dir = str(tmpdir.mkdir("output"))
-    exp_code = 0
-    exp_msg = None
+def test_build(raml_file, config_file, GRIFFIN, tmpdir):
+    """Test successful build"""
+    output_dir = tmpdir / "output"
 
-    result = runner.invoke(main.build, [
-                           "--ramlfile={0}".format(raml_file),
-                           "--config={0}".format(config_file),
-                           "--output={0}".format(output_dir)])
-    check_result(exp_code, exp_msg, result)
+    cmd = ["build",
+           "--ramlfile", raml_file.strpath,
+           "--config", config_file.strpath,
+           "--output", output_dir.strpath]
+    result = GRIFFIN.sysexec(*cmd)
+    # status code != 0 would raise an exception
+    assert result == ""
+
+
+def test_bad_invocation(raml_file, config_file, GRIFFIN, tmpdir):
+    """Test invalid invocation"""
+    output_dir = tmpdir.mkdir("output")
+
+    cmd = ["i_want_to_fail",
+           "--ramlfile", raml_file.strpath,
+           "--config", config_file.strpath,
+           "--output", output_dir.strpath]
+    with pytest.raises(py.process.cmdexec.Error) as excinfo:
+        GRIFFIN.sysexec(*cmd)
+
+    e = excinfo.value
+    assert e.status == 2
+    assert e.err == """Usage: griffin [OPTIONS] COMMAND [ARGS]...
+
+Error: No such command "i_want_to_fail".
+"""
